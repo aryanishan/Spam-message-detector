@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SMS Spam Detection</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>SMS Spam Detection</h1>
+    <p class="subtext">Enter a message and detect whether it's spam or safe.</p>
+
+    <textarea id="messageInput" placeholder="Type your message here..."></textarea>
+    <button id="detectBtn">Detect Spam</button>
+
+    <div id="resultBox" class="hidden">
+      <p id="resultText"></p>
+    </div>
+
+    <h2>History</h2>
+    <ul id="historyList"></ul>
+  </div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
