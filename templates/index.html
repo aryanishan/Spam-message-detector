@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spam Message Detector Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;0,900;1,100&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -16,17 +19,55 @@
             ink: "#0f172a",
             coral: "#f97316",
             mint: "#14b8a6",
-            skyglass: "#e0f2fe"
+            skyglass: "#e0f2fe",
+            cream: "#fffaf2",
+            pine: "#12372a",
+            brass: "#b88a44"
           },
           boxShadow: {
-            glow: "0 30px 80px rgba(15, 23, 42, 0.16)"
+            glow: "0 30px 80px rgba(15, 23, 42, 0.16)",
+            paper: "0 18px 40px rgba(18, 55, 42, 0.08)"
           }
         }
       }
     };
   </script>
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .font-display {
+      font-family: "Times New Roman", Times, serif;
+    }
+
+    .font-neo {
+      font-family: "Roboto", Arial, sans-serif;
+    }
+
+    .font-thin-italic {
+      font-family: "Roboto", Arial, sans-serif;
+      font-style: italic;
+      font-weight: 100;
+    }
+
+    .font-mono-ui {
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .noise-grid {
+      background-image:
+        linear-gradient(rgba(18, 55, 42, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(18, 55, 42, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.18),_transparent_34%),linear-gradient(135deg,#fff7ed_0%,#ecfeff_45%,#eff6ff_100%)] text-slate-900">
+<body class="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(184,138,68,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.16),_transparent_26%),linear-gradient(135deg,#fffbf5_0%,#f3fbf8_48%,#eef6ff_100%)] text-slate-900">
   <div id="root"></div>
 
   {% raw %}
@@ -56,57 +97,64 @@
       return data;
     }
 
-    function StatCard({ label, value, accent, helpText }) {
+    function StatCard({ label, value, accent, helpText, theme }) {
+      const cardClasses =
+        theme === "dark"
+          ? "rounded-[1.8rem] border border-slate-700 bg-slate-900/80 p-5 shadow-paper"
+          : "rounded-[1.8rem] border border-[#eadfce] bg-[#fffdf8] p-5 shadow-paper";
+      const valueClasses = theme === "dark" ? "font-neo mt-4 text-[1.7rem] font-black text-slate-100" : "font-neo mt-4 text-[1.7rem] font-black text-ink";
+      const helpClasses = theme === "dark" ? "mt-2 text-sm leading-6 text-slate-400" : "mt-2 text-sm leading-6 text-slate-500";
+
       return (
-        <div className="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-glow backdrop-blur">
-          <div className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${accent}`}>
+        <div className={cardClasses}>
+          <div className={`font-mono-ui inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${accent}`}>
             {label}
           </div>
-          <div className="mt-4 text-3xl font-black text-ink">{value}</div>
-          {helpText ? <p className="mt-2 text-sm text-slate-500">{helpText}</p> : null}
+          <div className={valueClasses}>{value}</div>
+          {helpText ? <p className={helpClasses}>{helpText}</p> : null}
         </div>
       );
     }
 
-    function HorizontalBar({ label, value, total, color }) {
+    function HorizontalBar({ label, value, total, color, theme }) {
       const percent = total > 0 ? Math.round((value / total) * 100) : 0;
       return (
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm font-medium text-slate-700">
-            <span>{label}</span>
-            <span>{value} ({percent}%)</span>
+          <div className={`flex items-center justify-between text-sm font-medium ${theme === "dark" ? "text-slate-200" : "text-slate-700"}`}>
+            <span className="font-neo">{label}</span>
+            <span className="font-mono-ui">{value} ({percent}%)</span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+          <div className={`h-3 overflow-hidden rounded-full ${theme === "dark" ? "bg-slate-700/70" : "bg-white/30"}`}>
             <div className={`h-full rounded-full ${color}`} style={{ width: `${percent}%` }} />
           </div>
         </div>
       );
     }
 
-    function PreviewTable({ rows }) {
+    function PreviewTable({ rows, theme }) {
       if (!rows || rows.length === 0) {
-        return <p className="text-sm text-slate-500">No preview rows available.</p>;
+        return <p className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>No preview rows available.</p>;
       }
 
       const columns = Object.keys(rows[0]);
 
       return (
-        <div className="overflow-auto rounded-2xl border border-slate-200">
+        <div className={`overflow-auto rounded-[1.6rem] ${theme === "dark" ? "border border-slate-700" : "border border-[#e9e0d4]"}`}>
           <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+            <thead className={theme === "dark" ? "bg-slate-800" : "bg-[#fff8ee]"}>
               <tr>
                 {columns.map((column) => (
-                  <th key={column} className="px-4 py-3 text-left font-semibold text-slate-600">
+                  <th key={column} className={`font-mono-ui px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] ${theme === "dark" ? "text-slate-300" : "text-slate-500"}`}>
                     {column}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className={theme === "dark" ? "divide-y divide-slate-700 bg-slate-900/80" : "divide-y divide-[#f1e8dc] bg-white"}>
               {rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {columns.map((column) => (
-                    <td key={column} className="max-w-xs px-4 py-3 align-top text-slate-700">
+                    <td key={column} className={`max-w-xs px-4 py-3 align-top ${theme === "dark" ? "text-slate-200" : "text-slate-700"}`}>
                       <div className="line-clamp-3 break-words">{String(row[column] ?? "")}</div>
                     </td>
                   ))}
@@ -127,12 +175,48 @@
       const [isPredicting, setIsPredicting] = useState(false);
       const [isAnalyzing, setIsAnalyzing] = useState(false);
       const [error, setError] = useState("");
+      const [theme, setTheme] = useState("light");
 
       const totalPredicted = useMemo(() => {
         if (!analysis?.predicted_counts) return 0;
         const { spam = 0, ham = 0 } = analysis.predicted_counts;
         return spam + ham;
       }, [analysis]);
+
+      const shellClasses =
+        theme === "dark"
+          ? "min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.10),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(45,212,191,0.10),_transparent_24%),linear-gradient(135deg,#08111d_0%,#0f172a_52%,#172033_100%)] text-slate-100"
+          : "min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(184,138,68,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.16),_transparent_26%),linear-gradient(135deg,#fffbf5_0%,#f3fbf8_48%,#eef6ff_100%)] text-slate-900";
+
+      const panelClasses =
+        theme === "dark"
+          ? "border border-slate-700 bg-slate-900/82"
+          : "border border-[#eadfce] bg-[#fffdf9]/95";
+
+      const sectionClasses =
+        theme === "dark"
+          ? "border border-slate-700 bg-slate-900/78"
+          : "border border-[#eadfce] bg-[#fffdf8]";
+
+      const fileSectionClasses =
+        theme === "dark"
+          ? "border border-slate-700 bg-slate-900/76"
+          : "border border-[#d9e6de] bg-[#f8fffc]";
+
+      const softText = theme === "dark" ? "text-slate-300" : "text-slate-600";
+      const softText2 = theme === "dark" ? "text-slate-400" : "text-slate-500";
+      const chipButton =
+        theme === "dark"
+          ? "rounded-full border border-slate-600 bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-sky-400 hover:text-white"
+          : "rounded-full border border-[#e3d9ca] bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-[#c99249] hover:text-[#8b5e1a]";
+      const inputClasses =
+        theme === "dark"
+          ? "mt-7 min-h-[230px] w-full rounded-[2rem] border border-slate-700 bg-slate-800 px-6 py-5 text-[15px] leading-7 text-slate-100 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10"
+          : "mt-7 min-h-[230px] w-full rounded-[2rem] border border-[#e5dac9] bg-[#fffaf1] px-6 py-5 text-[15px] leading-7 text-slate-800 outline-none transition focus:border-[#c99249] focus:ring-4 focus:ring-[#c99249]/10";
+      const uploadDropzone =
+        theme === "dark"
+          ? "mt-8 flex cursor-pointer flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-600 bg-slate-800 px-8 py-14 text-center transition hover:border-sky-400 hover:bg-slate-800/80"
+          : "mt-8 flex cursor-pointer flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-[#b9d4ca] bg-[#f3fbf7] px-8 py-14 text-center transition hover:border-mint hover:bg-white";
 
       async function handlePredict() {
         const trimmedMessage = message.trim();
@@ -195,52 +279,80 @@
           : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
       return (
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <section className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 shadow-glow backdrop-blur">
-            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="p-8 sm:p-10">
-                <div className="inline-flex rounded-full border border-coral/20 bg-coral/10 px-4 py-1 text-xs font-bold uppercase tracking-[0.3em] text-coral">
-                  Spam Intelligence Dashboard
+        <div className={shellClasses}>
+        <main className="mx-auto max-w-[1680px] px-5 py-6 sm:px-8 lg:px-10 xl:px-12">
+          <header className={`sticky top-4 z-20 mb-10 rounded-[2.25rem] px-6 py-5 shadow-paper backdrop-blur ${panelClasses}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className={`font-mono-ui text-[11px] uppercase tracking-[0.32em] ${theme === "dark" ? "text-sky-300" : "text-[#8b5e1a]"}`}>Spam Message Detector</p>
+                <h1 className={`font-neo mt-2 text-lg font-black sm:text-[1.35rem] ${theme === "dark" ? "text-slate-100" : "text-[#13261d]"}`}>Aryan Gupta's Message Forensics Studio</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <nav className="flex flex-wrap items-center gap-3">
+                  <a href="#home" className={chipButton}>Home</a>
+                  <a href="#scan" className={chipButton}>Scan</a>
+                  <a href="#sheet-analysis" className={chipButton}>Sheet Analysis</a>
+                </nav>
+                <button
+                  type="button"
+                  onClick={() => setTheme((current) => (current === "light" ? "dark" : "light"))}
+                  className={chipButton}
+                >
+                  {theme === "dark" ? "Light Theme" : "Dark Theme"}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <section id="home" className={`overflow-hidden rounded-[2.75rem] shadow-glow scroll-mt-28 ${panelClasses}`}>
+            <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
+              <div className="p-8 sm:p-12 xl:p-16">
+                <div className={`font-mono-ui inline-flex rounded-full px-4 py-1 text-[11px] font-bold uppercase tracking-[0.34em] ${theme === "dark" ? "border border-slate-600 bg-slate-800 text-sky-300" : "border border-[#d5c3a6] bg-[#fff5e5] text-[#8b5e1a]"}`}>
+                  Home
                 </div>
-                <h1 className="mt-5 max-w-2xl text-4xl font-black tracking-tight text-ink sm:text-5xl">
-                  Detect spam messages instantly and analyze entire Excel or CSV datasets visually.
-                </h1>
-                <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-                  This dashboard supports single-message prediction and bulk file analysis with counts, preview rows,
-                  detected columns, and model evaluation when labels are available.
+                <h2 className={`font-neo mt-6 max-w-4xl text-[2rem] font-black leading-tight tracking-[-0.02em] sm:text-[2.5rem] xl:text-[3rem] ${theme === "dark" ? "text-slate-100" : "text-[#13261d]"}`}>
+                  Read the tone of a message and turn raw datasets into something you can actually see.
+                </h2>
+                <p className={`font-thin-italic mt-4 max-w-3xl text-[14px] leading-7 xl:text-[15px] ${softText2}`}>
+                  This single-page workspace lets you jump between message scanning and sheet analysis without opening new pages.
+                  Use the header to move around the app, test a typed message, or upload a dataset for a complete summary.
                 </p>
 
-                <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                <div className="mt-10 grid gap-5 md:grid-cols-3">
                   <StatCard
                     label="Single Message"
                     value={prediction?.prediction || "Ready"}
                     accent="bg-coral/10 text-coral"
-                    helpText="Check any typed message as spam or ham."
+                    helpText="Scan any typed message as spam or ham."
+                    theme={theme}
                   />
                   <StatCard
                     label="Dataset Rows"
                     value={analysis?.rows ?? "-"}
                     accent="bg-sky-100 text-sky-700"
-                    helpText="Rows detected in the uploaded file."
+                    helpText="Rows detected in the uploaded sheet."
+                    theme={theme}
                   />
                   <StatCard
                     label="Detected Spam"
                     value={analysis?.predicted_counts?.spam ?? "-"}
                     accent="bg-rose-100 text-rose-700"
-                    helpText="Predicted spam rows from the file."
+                    helpText="Predicted spam rows from the uploaded data."
+                    theme={theme}
                   />
                 </div>
               </div>
 
-              <div className="relative overflow-hidden bg-ink p-8 text-white sm:p-10">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(249,115,22,0.30),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(20,184,166,0.25),_transparent_30%)]" />
+              <div className="relative overflow-hidden bg-[linear-gradient(145deg,#10271f_0%,#16362c_46%,#0f1d34_100%)] p-8 text-white sm:p-12 xl:p-16">
+                <div className="noise-grid absolute inset-0 opacity-25" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,220,170,0.20),_transparent_26%),radial-gradient(circle_at_bottom_left,_rgba(20,184,166,0.22),_transparent_28%)]" />
                 <div className="relative">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-300">Visual Snapshot</p>
-                  <div className="mt-8 space-y-6">
-                    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <p className="font-mono-ui text-[11px] font-semibold uppercase tracking-[0.32em] text-[#d8c7a7]">Overview</p>
+                  <div className="mt-10 space-y-6">
+                    <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-300">Spam vs Ham</span>
-                        <span className="text-sm text-slate-400">{totalPredicted || 0} classified rows</span>
+                        <span className="font-neo text-sm text-slate-300">Spam vs Ham</span>
+                        <span className="font-mono-ui text-xs text-slate-400">{totalPredicted || 0} classified rows</span>
                       </div>
                       <div className="mt-4 space-y-4">
                         <HorizontalBar
@@ -248,36 +360,43 @@
                           value={analysis?.predicted_counts?.spam ?? 0}
                           total={totalPredicted}
                           color="bg-rose-400"
+                          theme={theme}
                         />
                         <HorizontalBar
                           label="Ham"
                           value={analysis?.predicted_counts?.ham ?? 0}
                           total={totalPredicted}
                           color="bg-emerald-400"
+                          theme={theme}
                         />
                       </div>
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-300">Message Column</p>
-                        <p className="mt-2 text-2xl font-black">{analysis?.message_column || "-"}</p>
+                      <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                        <p className="font-mono-ui text-[11px] uppercase tracking-[0.24em] text-slate-300">Message Column</p>
+                        <p className="font-neo mt-3 text-3xl font-bold">{analysis?.message_column || "-"}</p>
                       </div>
-                      <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                        <p className="text-sm text-slate-300">Label Column</p>
-                        <p className="mt-2 text-2xl font-black">{analysis?.label_column || "Not found"}</p>
+                      <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                        <p className="font-mono-ui text-[11px] uppercase tracking-[0.24em] text-slate-300">Label Column</p>
+                        <p className="font-neo mt-3 text-3xl font-bold">{analysis?.label_column || "Not found"}</p>
                       </div>
                     </div>
 
                     {analysis?.evaluation ? (
-                      <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
-                        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-200">Model Evaluation</p>
-                        <p className="mt-3 text-3xl font-black text-white">{analysis.evaluation.accuracy_percent}%</p>
+                      <div className="rounded-[2rem] border border-[#d8c7a7]/30 bg-[#f4d8a5]/10 p-6">
+                        <p className="font-mono-ui text-[11px] font-semibold uppercase tracking-[0.3em] text-[#f4d8a5]">Model Evaluation</p>
+                        <p className="font-neo mt-3 text-[2rem] font-black text-white xl:text-[2.3rem]">{analysis.evaluation.accuracy_percent}%</p>
                         <p className="mt-2 text-sm text-emerald-100">
                           {analysis.evaluation.matched_rows} correct predictions out of {analysis.evaluation.comparable_rows} comparable rows.
                         </p>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                        <p className="font-mono-ui text-[11px] uppercase tracking-[0.24em] text-slate-300">Navigation Hint</p>
+                        <p className="font-display mt-3 text-[1.5rem] text-white">Use Home, Scan, and Sheet Analysis to move through the app.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -290,15 +409,18 @@
             </div>
           ) : null}
 
-          <section className="mt-8 grid gap-8 lg:grid-cols-[1fr_1fr]">
-            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
+          <section className="mt-10 grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
+            <div id="scan" className={`rounded-[2.4rem] p-7 shadow-paper scroll-mt-28 sm:p-10 xl:p-12 ${sectionClasses}`}>
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.25em] text-coral">Message Detector</p>
-                  <h2 className="mt-2 text-2xl font-black text-ink">Check one message</h2>
+                  <p className="font-mono-ui text-[11px] font-bold uppercase tracking-[0.32em] text-coral">Message Detector</p>
+                  <h2 className="font-display mt-2 text-[1.8rem] font-normal text-ink xl:text-[2rem]">Check one message</h2>
+                  <p className={`mt-4 max-w-xl text-[15px] leading-7 ${softText}`}>
+                    Scan a message that you write and the model will classify it as spam or ham.
+                  </p>
                 </div>
-                <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  React UI
+                <div className={`font-mono-ui rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] ${theme === "dark" ? "border border-slate-600 bg-slate-800 text-slate-300" : "border border-[#e2d7c8] bg-[#f6f1e8] text-slate-500"}`}>
+                  Live Classifier
                 </div>
               </div>
 
@@ -306,32 +428,32 @@
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder="Type any message here, for example: Congratulations! You have won a free gift voucher..."
-                className="mt-6 min-h-[180px] w-full rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-800 outline-none transition focus:border-coral focus:ring-4 focus:ring-coral/10"
+                className={inputClasses}
               />
 
               <button
                 onClick={handlePredict}
                 disabled={isPredicting}
-                className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-ink px-5 py-4 text-base font-bold text-white transition hover:translate-y-[-1px] hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="font-neo mt-6 inline-flex w-full items-center justify-center rounded-[1.6rem] bg-[linear-gradient(135deg,#12372a_0%,#1e4d3c_100%)] px-6 py-4 text-[15px] font-bold text-white transition hover:translate-y-[-1px] hover:shadow-paper disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPredicting ? "Analyzing message..." : "Predict Spam or Ham"}
               </button>
 
               {prediction ? (
-                <div className={`mt-6 rounded-3xl border p-5 ${predictionTone}`}>
+                <div className={`mt-7 rounded-[2rem] border p-6 ${predictionTone}`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.25em]">Prediction</p>
-                      <h3 className="mt-2 text-3xl font-black">{prediction.prediction}</h3>
+                      <p className="font-mono-ui text-[11px] font-semibold uppercase tracking-[0.28em]">Prediction</p>
+                      <h3 className="font-neo mt-3 text-[2rem] font-black">{prediction.prediction}</h3>
                     </div>
                     {prediction.confidence !== null ? (
-                      <div className="rounded-2xl bg-white/70 px-4 py-3 text-right">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Confidence</p>
-                        <p className="mt-1 text-2xl font-black text-slate-800">{prediction.confidence}%</p>
+                      <div className="rounded-[1.6rem] bg-white/70 px-5 py-4 text-right">
+                        <p className="font-mono-ui text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Confidence</p>
+                        <p className="font-neo mt-1 text-[1.35rem] font-bold text-slate-800">{prediction.confidence}%</p>
                       </div>
                     ) : null}
                   </div>
-                  <p className="mt-4 text-sm leading-7">
+                  <p className="mt-5 text-[15px] leading-7">
                     {prediction.prediction === "SPAM"
                       ? "This message has the characteristics of promotional, deceptive, or unwanted text."
                       : "This message appears to be a regular or safe message."}
@@ -340,24 +462,24 @@
               ) : null}
 
               <div className="mt-6">
-                <p className="text-sm font-bold uppercase tracking-[0.25em] text-slate-500">Recent Checks</p>
+                <p className="font-mono-ui text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500">Recent Checks</p>
                 <div className="mt-4 space-y-3">
                   {history.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                    <div className={`rounded-[1.7rem] border border-dashed px-5 py-6 text-sm ${theme === "dark" ? "border-slate-700 bg-slate-800 text-slate-400" : "border-[#e5dac9] bg-[#fffaf1] text-slate-500"}`}>
                       Your recent message predictions will appear here.
                     </div>
                   ) : (
                     history.map((item, index) => (
-                      <div key={`${item.message}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                      <div key={`${item.message}-${index}`} className={`rounded-[1.7rem] border px-5 py-5 ${theme === "dark" ? "border-slate-700 bg-slate-800" : "border-[#e5dac9] bg-[#fffaf1]"}`}>
                         <div className="flex items-center justify-between gap-3">
-                          <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${item.prediction === "SPAM" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          <span className={`font-mono-ui rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ${item.prediction === "SPAM" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
                             {item.prediction}
                           </span>
                           {item.confidence !== null ? (
-                            <span className="text-xs font-semibold text-slate-500">{item.confidence}% confidence</span>
+                            <span className="font-mono-ui text-[11px] font-semibold text-slate-500">{item.confidence}% confidence</span>
                           ) : null}
                         </div>
-                        <p className="mt-3 text-sm text-slate-700">{item.message}</p>
+                        <p className={`mt-3 text-sm ${theme === "dark" ? "text-slate-200" : "text-slate-700"}`}>{item.message}</p>
                       </div>
                     ))
                   )}
@@ -365,43 +487,44 @@
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
-              <p className="text-sm font-bold uppercase tracking-[0.25em] text-mint">File Analyzer</p>
-              <h2 className="mt-2 text-2xl font-black text-ink">Upload CSV or Excel data</h2>
-              <p className="mt-3 text-slate-600">
+            <div id="sheet-analysis" className={`rounded-[2.4rem] p-7 shadow-paper scroll-mt-28 sm:p-10 xl:p-12 ${fileSectionClasses}`}>
+              <p className="font-mono-ui text-[11px] font-bold uppercase tracking-[0.32em] text-mint">File Analyzer</p>
+              <h2 className="font-display mt-2 text-[1.8rem] font-normal text-ink xl:text-[2rem]">Upload CSV or Excel data</h2>
+              <p className={`mt-4 max-w-3xl text-[15px] leading-7 ${softText}`}>
                 Upload `.csv`, `.xls`, or `.xlsx` files to inspect rows, columns, message counts, missing values,
-                and model predictions for the full dataset.
+                and model predictions for the full dataset. If the detected label column does not contain valid
+                `spam` or `ham` values, the sheet is treated as invalid.
               </p>
 
-              <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-[1.75rem] border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-mint hover:bg-white">
+              <label className={uploadDropzone}>
                 <input type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileUpload} />
-                <span className="rounded-full bg-mint/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-mint">
+                <span className="font-mono-ui rounded-full bg-mint/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-mint">
                   Upload Dataset
                 </span>
-                <span className="mt-4 text-lg font-semibold text-slate-800">
+                <span className={`font-neo mt-5 text-[1.05rem] font-bold ${theme === "dark" ? "text-slate-100" : "text-slate-800"}`}>
                   {selectedFileName || "Choose a CSV or Excel file"}
                 </span>
-                <span className="mt-2 text-sm text-slate-500">
+                <span className={`mt-3 text-sm ${softText2}`}>
                   {isAnalyzing ? "Analyzing file..." : "The app will auto-detect the message column and summarize the data."}
                 </span>
               </label>
 
               {analysis ? (
                 <div className="mt-6 space-y-6">
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-4">
                     <StatCard label="Rows" value={analysis.rows} accent="bg-sky-100 text-sky-700" />
                     <StatCard label="Columns" value={analysis.columns} accent="bg-amber-100 text-amber-700" />
                     <StatCard label="Ham" value={analysis.predicted_counts.ham} accent="bg-emerald-100 text-emerald-700" />
                     <StatCard label="Spam" value={analysis.predicted_counts.spam} accent="bg-rose-100 text-rose-700" />
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                  <div className={`rounded-[2rem] border p-6 ${theme === "dark" ? "border-slate-700 bg-slate-800/80" : "border-[#d9e6de] bg-[#f3fbf7]"}`}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Uploaded File</p>
-                        <h3 className="mt-2 text-xl font-black text-ink">{analysis.file_name}</h3>
+                        <p className={`font-mono-ui text-[11px] font-bold uppercase tracking-[0.24em] ${softText2}`}>Uploaded File</p>
+                        <h3 className={`font-neo mt-2 text-base font-bold ${theme === "dark" ? "text-slate-100" : "text-ink"}`}>{analysis.file_name}</h3>
                       </div>
-                      <div className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-600">
+                      <div className={`font-mono-ui rounded-[1.2rem] px-4 py-3 text-xs font-medium ${theme === "dark" ? "bg-slate-900 text-slate-300" : "bg-white text-slate-600"}`}>
                         Size: {analysis.file_size_kb} KB
                       </div>
                     </div>
@@ -409,32 +532,35 @@
                     <div className="mt-5 space-y-4">
                       <HorizontalBar
                         label="Predicted Spam"
-                        value={analysis.predicted_counts.spam}
-                        total={totalPredicted}
-                        color="bg-rose-500"
-                      />
+                          value={analysis.predicted_counts.spam}
+                          total={totalPredicted}
+                          color="bg-rose-500"
+                          theme={theme}
+                        />
                       <HorizontalBar
                         label="Predicted Ham"
-                        value={analysis.predicted_counts.ham}
-                        total={totalPredicted}
-                        color="bg-emerald-500"
-                      />
+                          value={analysis.predicted_counts.ham}
+                          total={totalPredicted}
+                          color="bg-emerald-500"
+                          theme={theme}
+                        />
                       {analysis.predicted_counts.empty > 0 ? (
                         <HorizontalBar
                           label="Empty Messages"
                           value={analysis.predicted_counts.empty}
                           total={analysis.rows}
                           color="bg-slate-400"
+                          theme={theme}
                         />
                       ) : null}
                     </div>
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Detected Columns</p>
+                  <div className={`rounded-[2rem] border p-6 ${theme === "dark" ? "border-slate-700 bg-slate-900/80" : "border-[#d9e6de] bg-white"}`}>
+                    <p className={`font-mono-ui text-[11px] font-bold uppercase tracking-[0.24em] ${softText2}`}>Detected Columns</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {analysis.column_names.map((column) => (
-                        <span key={column} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">
+                        <span key={column} className={`font-mono-ui rounded-full px-3 py-2 text-[11px] font-medium uppercase tracking-[0.16em] ${theme === "dark" ? "bg-slate-800 text-sky-300" : "bg-[#edf7f2] text-[#275544]"}`}>
                           {column}
                         </span>
                       ))}
@@ -448,48 +574,81 @@
                         value={analysis.actual_counts.ham}
                         accent="bg-emerald-100 text-emerald-700"
                         helpText="Count from the label column in your dataset."
+                        theme={theme}
                       />
                       <StatCard
                         label="Actual Spam"
                         value={analysis.actual_counts.spam}
                         accent="bg-rose-100 text-rose-700"
                         helpText="Count from the label column in your dataset."
+                        theme={theme}
                       />
                     </div>
                   ) : null}
 
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Missing Values</p>
+                  <div className={`rounded-[2rem] border p-6 ${theme === "dark" ? "border-slate-700 bg-slate-900/80" : "border-[#d9e6de] bg-white"}`}>
+                    <p className={`font-mono-ui text-[11px] font-bold uppercase tracking-[0.24em] ${softText2}`}>Missing Values</p>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       {Object.entries(analysis.missing_values).map(([column, count]) => (
-                        <div key={column} className="rounded-2xl bg-slate-50 px-4 py-4">
-                          <p className="text-sm font-semibold text-slate-800">{column}</p>
-                          <p className="mt-2 text-2xl font-black text-ink">{count}</p>
+                        <div key={column} className={`rounded-[1.5rem] px-5 py-5 ${theme === "dark" ? "bg-slate-800" : "bg-[#f6fbf8]"}`}>
+                          <p className={`font-neo text-sm font-semibold ${theme === "dark" ? "text-slate-200" : "text-slate-800"}`}>{column}</p>
+                          <p className={`font-neo mt-2 text-2xl font-bold ${theme === "dark" ? "text-slate-100" : "text-ink"}`}>{count}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <div className={`rounded-[2rem] border p-6 ${theme === "dark" ? "border-slate-700 bg-slate-900/80" : "border-[#d9e6de] bg-white"}`}>
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Preview</p>
-                        <h3 className="mt-2 text-xl font-black text-ink">First rows with predictions</h3>
+                        <p className={`font-mono-ui text-[11px] font-bold uppercase tracking-[0.24em] ${softText2}`}>Preview</p>
+                        <h3 className={`font-display mt-2 text-[1.3rem] font-normal ${theme === "dark" ? "text-slate-100" : "text-ink"}`}>First rows with predictions</h3>
                       </div>
                     </div>
                     <div className="mt-4">
-                      <PreviewTable rows={analysis.preview} />
+                      <PreviewTable rows={analysis.preview} theme={theme} />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm text-slate-500">
+                <div className={`mt-7 rounded-[2rem] border border-dashed px-6 py-10 text-sm ${theme === "dark" ? "border-slate-700 bg-slate-800 text-slate-400" : "border-[#b9d4ca] bg-[#f3fbf7] text-slate-500"}`}>
                   Upload a file to see full dataset insights here.
                 </div>
               )}
             </div>
           </section>
+
+          <footer className={`mt-12 rounded-[2.25rem] px-7 py-10 shadow-paper ${sectionClasses}`}>
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+              <div>
+                <p className={`font-mono-ui text-[11px] uppercase tracking-[0.32em] ${theme === "dark" ? "text-sky-300" : "text-[#8b5e1a]"}`}>Footer</p>
+                <h2 className={`font-neo mt-2 text-lg font-black ${theme === "dark" ? "text-slate-100" : "text-[#13261d]"}`}>Aryan Gupta</h2>
+                <p className={`mt-4 max-w-2xl text-[15px] leading-7 ${softText}`}>
+                  Spam Message Detector and sheet analysis interface for checking messages, validating labeled datasets,
+                  and reviewing predictions in one smooth scrolling experience.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <a href="https://github.com/aryanishan" target="_blank" rel="noreferrer" aria-label="GitHub profile" className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${theme === "dark" ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
+                      <path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.02c-3.34.73-4.04-1.42-4.04-1.42a3.18 3.18 0 0 0-1.34-1.76c-1.09-.75.08-.73.08-.73a2.51 2.51 0 0 1 1.84 1.23 2.56 2.56 0 0 0 3.49 1 2.57 2.57 0 0 1 .76-1.61c-2.67-.31-5.48-1.33-5.48-5.94a4.66 4.66 0 0 1 1.24-3.24 4.32 4.32 0 0 1 .12-3.19s1.01-.32 3.3 1.24a11.38 11.38 0 0 1 6 0c2.28-1.56 3.29-1.24 3.29-1.24a4.32 4.32 0 0 1 .12 3.19 4.65 4.65 0 0 1 1.24 3.24c0 4.62-2.81 5.62-5.49 5.93a2.88 2.88 0 0 1 .82 2.23v3.3c0 .32.22.7.83.58A12 12 0 0 0 12 .5Z" />
+                    </svg>
+                  </a>
+                  <a href="https://www.linkedin.com/in/aryan-gupta-ag01" target="_blank" rel="noreferrer" aria-label="LinkedIn profile" className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${theme === "dark" ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
+                      <path d="M4.98 3.5A2.48 2.48 0 1 0 5 8.46 2.48 2.48 0 0 0 4.98 3.5ZM3 9h4v12H3Zm7 0h3.83v1.64h.05c.53-1 1.84-2.05 3.79-2.05C21.72 8.59 24 10.65 24 15.1V21h-4v-5.22c0-2.02-.04-4.62-2.82-4.62-2.82 0-3.25 2.2-3.25 4.47V21h-4Z" />
+                    </svg>
+                  </a>
+                </div>
+                <p className="font-mono-ui pt-2 text-[11px] uppercase tracking-[0.28em] text-slate-500">
+                  Copyright © {new Date().getFullYear()} Aryan Gupta. All rights reserved.
+                </p>
+              </div>
+            </div>
+          </footer>
         </main>
+        </div>
       );
     }
 

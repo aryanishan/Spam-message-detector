@@ -202,6 +202,11 @@ def analyze_dataframe(dataframe, filename, file_size):
 
     if label_column is not None:
         actual_labels = working_df[label_column].apply(normalize_label)
+        valid_label_rows = int(actual_labels.isin(["SPAM", "HAM"]).sum())
+        if valid_label_rows == 0:
+            raise ValueError(
+                "Invalid dataset: the detected label column does not contain valid spam/ham values."
+            )
         comparable_mask = actual_labels.isin(["SPAM", "HAM"]) & working_df["predicted_label"].isin(
             ["SPAM", "HAM"]
         )
