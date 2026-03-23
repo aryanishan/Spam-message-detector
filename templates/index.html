@@ -86,7 +86,7 @@
         try {
           data = JSON.parse(text);
         } catch (error) {
-          throw new Error("The server returned an invalid response. Make sure Flask is running on port 5000.");
+          throw new Error("The server returned an invalid response. If this is the deployed site, check the Render logs for the failing API request.");
         }
       }
 

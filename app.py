@@ -3,6 +3,7 @@ import os
 import pickle
 import re
 import math
+from werkzeug.exceptions import HTTPException
 
 from flask import Flask, jsonify, render_template, request
 
@@ -234,6 +235,21 @@ def analyze_dataframe(dataframe, filename, file_size):
 @app.route("/")
 def home():
     return render_template("index.html")
+
+
+@app.errorhandler(HTTPException)
+def handle_http_exception(exc):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": exc.description}), exc.code
+    return exc
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_exception(exc):
+    app.logger.exception("Unhandled error while processing %s", request.path)
+    if request.path.startswith("/api/"):
+        return jsonify({"error": f"Server error: {exc}"}), 500
+    return jsonify({"error": "Unexpected server error."}), 500
 
 
 @app.after_request
