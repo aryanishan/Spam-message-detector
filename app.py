@@ -237,6 +237,17 @@ def home():
     return render_template("index.html")
 
 
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify(
+        {
+            "status": "ok",
+            "model_loaded": model is not None,
+            "vectorizer_loaded": vectorizer is not None,
+        }
+    )
+
+
 @app.errorhandler(HTTPException)
 def handle_http_exception(exc):
     if request.path.startswith("/api/"):

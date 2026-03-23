@@ -86,7 +86,12 @@
         try {
           data = JSON.parse(text);
         } catch (error) {
-          throw new Error("The server returned an invalid response. If this is the deployed site, check the Render logs for the failing API request.");
+          const compactText = text.replace(/\s+/g, " ").trim().slice(0, 220);
+          throw new Error(
+            compactText
+              ? `The server returned a non-JSON response: ${compactText}`
+              : "The server returned an invalid empty response."
+          );
         }
       }
 
