@@ -2,25 +2,499 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SMS Spam Detection</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spam Message Detector Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#0f172a",
+            coral: "#f97316",
+            mint: "#14b8a6",
+            skyglass: "#e0f2fe"
+          },
+          boxShadow: {
+            glow: "0 30px 80px rgba(15, 23, 42, 0.16)"
+          }
+        }
+      }
+    };
+  </script>
 </head>
-<body>
-  <div class="container">
-    <h1>SMS Spam Detection</h1>
-    <p class="subtext">Enter a message and detect whether it's spam or safe.</p>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.18),_transparent_34%),linear-gradient(135deg,#fff7ed_0%,#ecfeff_45%,#eff6ff_100%)] text-slate-900">
+  <div id="root"></div>
 
-    <textarea id="messageInput" placeholder="Type your message here..."></textarea>
-    <button id="detectBtn">Detect Spam</button>
+  {% raw %}
+  <script type="text/babel">
+    const { useMemo, useState } = React;
+    const API_BASE =
+      window.location.port === "5500" || window.location.protocol === "file:"
+        ? "http://127.0.0.1:5000"
+        : "";
 
-    <div id="resultBox" class="hidden">
-      <p id="resultText"></p>
-    </div>
+    async function readJsonResponse(response) {
+      const text = await response.text();
+      let data = {};
 
-    <h2>History</h2>
-    <ul id="historyList"></ul>
-  </div>
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          throw new Error("The server returned an invalid response. Make sure Flask is running on port 5000.");
+        }
+      }
 
-  <script src="/static/script.js"></script>
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed with status ${response.status}`);
+      }
+
+      return data;
+    }
+
+    function StatCard({ label, value, accent, helpText }) {
+      return (
+        <div className="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-glow backdrop-blur">
+          <div className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${accent}`}>
+            {label}
+          </div>
+          <div className="mt-4 text-3xl font-black text-ink">{value}</div>
+          {helpText ? <p className="mt-2 text-sm text-slate-500">{helpText}</p> : null}
+        </div>
+      );
+    }
+
+    function HorizontalBar({ label, value, total, color }) {
+      const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+            <span>{label}</span>
+            <span>{value} ({percent}%)</span>
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+            <div className={`h-full rounded-full ${color}`} style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      );
+    }
+
+    function PreviewTable({ rows }) {
+      if (!rows || rows.length === 0) {
+        return <p className="text-sm text-slate-500">No preview rows available.</p>;
+      }
+
+      const columns = Object.keys(rows[0]);
+
+      return (
+        <div className="overflow-auto rounded-2xl border border-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                {columns.map((column) => (
+                  <th key={column} className="px-4 py-3 text-left font-semibold text-slate-600">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {columns.map((column) => (
+                    <td key={column} className="max-w-xs px-4 py-3 align-top text-slate-700">
+                      <div className="line-clamp-3 break-words">{String(row[column] ?? "")}</div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    function App() {
+      const [message, setMessage] = useState("");
+      const [prediction, setPrediction] = useState(null);
+      const [analysis, setAnalysis] = useState(null);
+      const [history, setHistory] = useState([]);
+      const [selectedFileName, setSelectedFileName] = useState("");
+      const [isPredicting, setIsPredicting] = useState(false);
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [error, setError] = useState("");
+
+      const totalPredicted = useMemo(() => {
+        if (!analysis?.predicted_counts) return 0;
+        const { spam = 0, ham = 0 } = analysis.predicted_counts;
+        return spam + ham;
+      }, [analysis]);
+
+      async function handlePredict() {
+        const trimmedMessage = message.trim();
+        if (!trimmedMessage) {
+          setError("Please type a message before checking.");
+          return;
+        }
+
+        setError("");
+        setIsPredicting(true);
+
+        try {
+          const response = await fetch(`${API_BASE}/api/predict`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: trimmedMessage })
+          });
+          const data = await readJsonResponse(response);
+
+          setPrediction(data);
+          setHistory((prev) => [data, ...prev].slice(0, 6));
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setIsPredicting(false);
+        }
+      }
+
+      async function handleFileUpload(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setSelectedFileName(file.name);
+        setError("");
+        setIsAnalyzing(true);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const response = await fetch(`${API_BASE}/api/analyze-file`, {
+            method: "POST",
+            body: formData
+          });
+          const data = await readJsonResponse(response);
+
+          setAnalysis(data);
+        } catch (err) {
+          setError(err.message);
+          setAnalysis(null);
+        } finally {
+          setIsAnalyzing(false);
+          event.target.value = "";
+        }
+      }
+
+      const predictionTone =
+        prediction?.prediction === "SPAM"
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : "border-emerald-200 bg-emerald-50 text-emerald-700";
+
+      return (
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <section className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 shadow-glow backdrop-blur">
+            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="p-8 sm:p-10">
+                <div className="inline-flex rounded-full border border-coral/20 bg-coral/10 px-4 py-1 text-xs font-bold uppercase tracking-[0.3em] text-coral">
+                  Spam Intelligence Dashboard
+                </div>
+                <h1 className="mt-5 max-w-2xl text-4xl font-black tracking-tight text-ink sm:text-5xl">
+                  Detect spam messages instantly and analyze entire Excel or CSV datasets visually.
+                </h1>
+                <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+                  This dashboard supports single-message prediction and bulk file analysis with counts, preview rows,
+                  detected columns, and model evaluation when labels are available.
+                </p>
+
+                <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                  <StatCard
+                    label="Single Message"
+                    value={prediction?.prediction || "Ready"}
+                    accent="bg-coral/10 text-coral"
+                    helpText="Check any typed message as spam or ham."
+                  />
+                  <StatCard
+                    label="Dataset Rows"
+                    value={analysis?.rows ?? "-"}
+                    accent="bg-sky-100 text-sky-700"
+                    helpText="Rows detected in the uploaded file."
+                  />
+                  <StatCard
+                    label="Detected Spam"
+                    value={analysis?.predicted_counts?.spam ?? "-"}
+                    accent="bg-rose-100 text-rose-700"
+                    helpText="Predicted spam rows from the file."
+                  />
+                </div>
+              </div>
+
+              <div className="relative overflow-hidden bg-ink p-8 text-white sm:p-10">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(249,115,22,0.30),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(20,184,166,0.25),_transparent_30%)]" />
+                <div className="relative">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-300">Visual Snapshot</p>
+                  <div className="mt-8 space-y-6">
+                    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-300">Spam vs Ham</span>
+                        <span className="text-sm text-slate-400">{totalPredicted || 0} classified rows</span>
+                      </div>
+                      <div className="mt-4 space-y-4">
+                        <HorizontalBar
+                          label="Spam"
+                          value={analysis?.predicted_counts?.spam ?? 0}
+                          total={totalPredicted}
+                          color="bg-rose-400"
+                        />
+                        <HorizontalBar
+                          label="Ham"
+                          value={analysis?.predicted_counts?.ham ?? 0}
+                          total={totalPredicted}
+                          color="bg-emerald-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                        <p className="text-sm text-slate-300">Message Column</p>
+                        <p className="mt-2 text-2xl font-black">{analysis?.message_column || "-"}</p>
+                      </div>
+                      <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                        <p className="text-sm text-slate-300">Label Column</p>
+                        <p className="mt-2 text-2xl font-black">{analysis?.label_column || "Not found"}</p>
+                      </div>
+                    </div>
+
+                    {analysis?.evaluation ? (
+                      <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5">
+                        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-200">Model Evaluation</p>
+                        <p className="mt-3 text-3xl font-black text-white">{analysis.evaluation.accuracy_percent}%</p>
+                        <p className="mt-2 text-sm text-emerald-100">
+                          {analysis.evaluation.matched_rows} correct predictions out of {analysis.evaluation.comparable_rows} comparable rows.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {error ? (
+            <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+              {error}
+            </div>
+          ) : null}
+
+          <section className="mt-8 grid gap-8 lg:grid-cols-[1fr_1fr]">
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-[0.25em] text-coral">Message Detector</p>
+                  <h2 className="mt-2 text-2xl font-black text-ink">Check one message</h2>
+                </div>
+                <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  React UI
+                </div>
+              </div>
+
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Type any message here, for example: Congratulations! You have won a free gift voucher..."
+                className="mt-6 min-h-[180px] w-full rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-base text-slate-800 outline-none transition focus:border-coral focus:ring-4 focus:ring-coral/10"
+              />
+
+              <button
+                onClick={handlePredict}
+                disabled={isPredicting}
+                className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-ink px-5 py-4 text-base font-bold text-white transition hover:translate-y-[-1px] hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPredicting ? "Analyzing message..." : "Predict Spam or Ham"}
+              </button>
+
+              {prediction ? (
+                <div className={`mt-6 rounded-3xl border p-5 ${predictionTone}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.25em]">Prediction</p>
+                      <h3 className="mt-2 text-3xl font-black">{prediction.prediction}</h3>
+                    </div>
+                    {prediction.confidence !== null ? (
+                      <div className="rounded-2xl bg-white/70 px-4 py-3 text-right">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Confidence</p>
+                        <p className="mt-1 text-2xl font-black text-slate-800">{prediction.confidence}%</p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <p className="mt-4 text-sm leading-7">
+                    {prediction.prediction === "SPAM"
+                      ? "This message has the characteristics of promotional, deceptive, or unwanted text."
+                      : "This message appears to be a regular or safe message."}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="mt-6">
+                <p className="text-sm font-bold uppercase tracking-[0.25em] text-slate-500">Recent Checks</p>
+                <div className="mt-4 space-y-3">
+                  {history.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      Your recent message predictions will appear here.
+                    </div>
+                  ) : (
+                    history.map((item, index) => (
+                      <div key={`${item.message}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${item.prediction === "SPAM" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                            {item.prediction}
+                          </span>
+                          {item.confidence !== null ? (
+                            <span className="text-xs font-semibold text-slate-500">{item.confidence}% confidence</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-3 text-sm text-slate-700">{item.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-mint">File Analyzer</p>
+              <h2 className="mt-2 text-2xl font-black text-ink">Upload CSV or Excel data</h2>
+              <p className="mt-3 text-slate-600">
+                Upload `.csv`, `.xls`, or `.xlsx` files to inspect rows, columns, message counts, missing values,
+                and model predictions for the full dataset.
+              </p>
+
+              <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-[1.75rem] border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-mint hover:bg-white">
+                <input type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileUpload} />
+                <span className="rounded-full bg-mint/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-mint">
+                  Upload Dataset
+                </span>
+                <span className="mt-4 text-lg font-semibold text-slate-800">
+                  {selectedFileName || "Choose a CSV or Excel file"}
+                </span>
+                <span className="mt-2 text-sm text-slate-500">
+                  {isAnalyzing ? "Analyzing file..." : "The app will auto-detect the message column and summarize the data."}
+                </span>
+              </label>
+
+              {analysis ? (
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatCard label="Rows" value={analysis.rows} accent="bg-sky-100 text-sky-700" />
+                    <StatCard label="Columns" value={analysis.columns} accent="bg-amber-100 text-amber-700" />
+                    <StatCard label="Ham" value={analysis.predicted_counts.ham} accent="bg-emerald-100 text-emerald-700" />
+                    <StatCard label="Spam" value={analysis.predicted_counts.spam} accent="bg-rose-100 text-rose-700" />
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Uploaded File</p>
+                        <h3 className="mt-2 text-xl font-black text-ink">{analysis.file_name}</h3>
+                      </div>
+                      <div className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-600">
+                        Size: {analysis.file_size_kb} KB
+                      </div>
+                    </div>
+
+                    <div className="mt-5 space-y-4">
+                      <HorizontalBar
+                        label="Predicted Spam"
+                        value={analysis.predicted_counts.spam}
+                        total={totalPredicted}
+                        color="bg-rose-500"
+                      />
+                      <HorizontalBar
+                        label="Predicted Ham"
+                        value={analysis.predicted_counts.ham}
+                        total={totalPredicted}
+                        color="bg-emerald-500"
+                      />
+                      {analysis.predicted_counts.empty > 0 ? (
+                        <HorizontalBar
+                          label="Empty Messages"
+                          value={analysis.predicted_counts.empty}
+                          total={analysis.rows}
+                          color="bg-slate-400"
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                    <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Detected Columns</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {analysis.column_names.map((column) => (
+                        <span key={column} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">
+                          {column}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {analysis.actual_counts ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <StatCard
+                        label="Actual Ham"
+                        value={analysis.actual_counts.ham}
+                        accent="bg-emerald-100 text-emerald-700"
+                        helpText="Count from the label column in your dataset."
+                      />
+                      <StatCard
+                        label="Actual Spam"
+                        value={analysis.actual_counts.spam}
+                        accent="bg-rose-100 text-rose-700"
+                        helpText="Count from the label column in your dataset."
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                    <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Missing Values</p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {Object.entries(analysis.missing_values).map(([column, count]) => (
+                        <div key={column} className="rounded-2xl bg-slate-50 px-4 py-4">
+                          <p className="text-sm font-semibold text-slate-800">{column}</p>
+                          <p className="mt-2 text-2xl font-black text-ink">{count}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Preview</p>
+                        <h3 className="mt-2 text-xl font-black text-ink">First rows with predictions</h3>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <PreviewTable rows={analysis.preview} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm text-slate-500">
+                  Upload a file to see full dataset insights here.
+                </div>
+              )}
+            </div>
+          </section>
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+  {% endraw %}
 </body>
 </html>
