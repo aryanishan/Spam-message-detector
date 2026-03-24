@@ -133,6 +133,33 @@ def predict_message(message):
     }
 
 
+def predict_messages_batch(messages):
+    ensure_artifacts_loaded()
+
+    cleaned_messages = [clean_text(message) for message in messages]
+    predictions = ["EMPTY"] * len(cleaned_messages)
+
+    non_empty_indexes = [index for index, cleaned in enumerate(cleaned_messages) if cleaned]
+    if not non_empty_indexes:
+        return predictions
+
+    vectors = vectorizer.transform([cleaned_messages[index] for index in non_empty_indexes])
+    raw_predictions = model.predict(vectors)
+
+    for index, raw_prediction in zip(non_empty_indexes, raw_predictions):
+        label = normalize_label(raw_prediction)
+        if label is None:
+            try:
+                label = "SPAM" if int(raw_prediction) == 1 else "HAM"
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Unsupported prediction label returned by model: {raw_prediction}"
+                )
+        predictions[index] = label
+
+    return predictions
+
+
 def find_best_column(columns, candidates):
     lowered = {str(column).strip().lower(): column for column in columns}
     for candidate in candidates:
@@ -212,9 +239,7 @@ def analyze_dataframe(dataframe, filename, file_size):
 
     working_df = dataframe.copy()
     working_df[text_column] = working_df[text_column].fillna("").astype(str)
-    working_df["predicted_label"] = working_df[text_column].apply(
-        lambda item: predict_message(item)["prediction"] if clean_text(item) else "EMPTY"
-    )
+    working_df["predicted_label"] = predict_messages_batch(working_df[text_column].tolist())
 
     spam_count = int((working_df["predicted_label"] == "SPAM").sum())
     ham_count = int((working_df["predicted_label"] == "HAM").sum())
