@@ -26,11 +26,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "spam_model.pkl")
 VECTORIZER_PATH = os.path.join(BASE_DIR, "vectorizer.pkl")
 
-with open(MODEL_PATH, "rb") as model_file:
-    model = pickle.load(model_file)
-
-with open(VECTORIZER_PATH, "rb") as vectorizer_file:
-    vectorizer = pickle.load(vectorizer_file)
+model = None
+vectorizer = None
+model_load_error = None
 
 TEXT_COLUMN_CANDIDATES = [
     "message",
@@ -54,6 +52,43 @@ LABEL_COLUMN_CANDIDATES = [
 ]
 
 
+def load_artifacts():
+    global model, vectorizer, model_load_error
+
+    if model is not None and vectorizer is not None:
+        return
+
+    try:
+        with open(MODEL_PATH, "rb") as model_file:
+            loaded_model = pickle.load(model_file)
+
+        with open(VECTORIZER_PATH, "rb") as vectorizer_file:
+            loaded_vectorizer = pickle.load(vectorizer_file)
+
+        model = loaded_model
+        vectorizer = loaded_vectorizer
+        model_load_error = None
+    except Exception as exc:
+        model = None
+        vectorizer = None
+        model_load_error = str(exc)
+        app.logger.exception("Failed to load model artifacts.")
+
+
+def ensure_artifacts_loaded():
+    load_artifacts()
+    if model is None or vectorizer is None:
+        detail = (
+            f" Model load error: {model_load_error}"
+            if model_load_error
+            else ""
+        )
+        raise RuntimeError(
+            "The prediction model is not available on the server."
+            f"{detail}"
+        )
+
+
 def clean_text(text):
     text = "" if text is None else str(text)
     text = text.lower()
@@ -71,6 +106,7 @@ def normalize_label(value):
 
 
 def predict_message(message):
+    ensure_artifacts_loaded()
     cleaned = clean_text(message)
     if not cleaned:
         raise ValueError("Message cannot be empty.")
@@ -239,11 +275,13 @@ def home():
 
 @app.route("/api/health", methods=["GET"])
 def health():
+    load_artifacts()
     return jsonify(
         {
-            "status": "ok",
+            "status": "ok" if model is not None and vectorizer is not None else "degraded",
             "model_loaded": model is not None,
             "vectorizer_loaded": vectorizer is not None,
+            "model_load_error": model_load_error,
         }
     )
 
@@ -275,12 +313,15 @@ def add_cors_headers(response):
 
 
 @app.route("/api/predict", methods=["OPTIONS"])
+@app.route("/predict", methods=["OPTIONS"])
 @app.route("/api/analyze-file", methods=["OPTIONS"])
+@app.route("/analyze-file", methods=["OPTIONS"])
 def handle_preflight():
     return ("", 204)
 
 
 @app.route("/api/predict", methods=["POST"])
+@app.route("/predict", methods=["POST"])
 def predict():
     payload = request.get_json(silent=True) or {}
     message = payload.get("message", "")
@@ -295,6 +336,7 @@ def predict():
 
 
 @app.route("/api/analyze-file", methods=["POST"])
+@app.route("/analyze-file", methods=["POST"])
 def analyze_file():
     uploaded_file = request.files.get("file")
 
@@ -312,4 +354,8 @@ def analyze_file():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    app.run(
+        debug=True,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+    )
